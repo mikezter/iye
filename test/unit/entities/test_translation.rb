@@ -1,32 +1,37 @@
 # encoding: utf-8
 
 require "test_helper"
-require "i18n_yaml_editor/translation"
+require "i18n_yaml_editor/entities/translation"
 
 class TestTranslation < Minitest::Test
   def test_text
-    translation = Translation.new(text: "Some string")
+    translation = Translation.new(value: "Some string")
     assert_equal "Some string", translation.text
   end
 
-  def test_empty_text_is_nil
+  def test_nil_value_is_blank_text
+    translation = Translation.new(text: nil)
+    assert translation.text_blank?
+  end
+
+  def test_empty_value_is_blank_text
     translation = Translation.new(text: "")
-    assert_nil translation.text
+    assert translation.text_blank?
   end
 
-  def test_text_with_space_is_nil
+  def test_space_value_is_blank_text
     translation = Translation.new(text: " ")
-    assert_nil translation.text
+    assert translation.text_blank?
   end
 
-  def test_text_with_tab_is_nil
+  def test_tab_value_is_blank_text
     translation = Translation.new(text: "\t")
-    assert_nil translation.text
+    assert translation.text_blank?
   end
 
-  def test_text_is_array
-    translation = Translation.new(text: %w(a b c))
-    assert_equal %w(a b c), translation.text
+  def test_array_value_is_array
+    translation = Translation.new(value: %w(a b c))
+    assert_equal %w(a b c), translation.value
   end
 
   def test_text_normalize_newlines
@@ -35,7 +40,7 @@ class TestTranslation < Minitest::Test
   end
 
   def test_number_of_lines_nil
-    translation = Translation.new(text: nil)
+    translation = Translation.new(value: nil)
     assert_equal 1, translation.number_of_lines
   end
 
@@ -49,13 +54,8 @@ class TestTranslation < Minitest::Test
     assert_equal 3, translation.number_of_lines
   end
 
-  def test_key
-    translation = Translation.new(name: "da.session.login")
-    assert_equal "session.login", translation.key
-  end
-
-  def test_locale
-    translation = Translation.new(name: "da.session.login")
-    assert_equal "da", translation.locale
+  def test_id_construction
+    translation = Translation.new(locale_id: "da", key_id: "session.login")
+    assert_equal "da.session.login", translation.id
   end
 end

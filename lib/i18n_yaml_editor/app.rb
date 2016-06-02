@@ -1,46 +1,41 @@
-# encoding: utf-8
+require 'yaml'
 
-require "psych"
-require "yaml"
-
-require "i18n_yaml_editor"
-require "i18n_yaml_editor/web"
-require "i18n_yaml_editor/store"
+require 'i18n_yaml_editor'
+require 'i18n_yaml_editor/web'
+require 'i18n_yaml_editor/store'
 
 module I18nYamlEditor
   class App
-    def initialize path
-      @path = File.expand_path(path)
-      @store = Store.new
-      I18nYamlEditor.app = self
-    end
-
+    attr_reader :base_path, :rel_path, :full_path
     attr_accessor :store
 
-    def start
-      $stdout.puts " * Loading translations from #{@path}"
-      load_translations
+    def initialize(path, options = {})
+      @base_path = Dir.pwd
+      @rel_path = path
+      @full_path = File.expand_path(path, @base_path)
+      @store = options.fetch(:store){ Store.new }
 
-      $stdout.puts " * Creating missing translations"
-      store.create_missing_keys
-
-      $stdout.puts " * Starting web editor at port 5050"
-      Rack::Server.start :app => Web, :Port => 5050
+      populate_store
     end
 
-    def load_translations
-      files = Dir[@path + "/**/*.yml"]
-      files.each {|file|
-        yaml = YAML.load_file(file)
-        store.from_yaml(yaml, file)
-      }
+    def populate_store
+      store.from_raw(load_files(Dir[full_path + '/**/*.yml']))
     end
 
-    def save_translations
-      files = store.to_yaml
-      files.each {|file, yaml|
-        File.open(file, "w", encoding: "utf-8") {|f| f << yaml.to_yaml}
-      }
+    def persist_store
+      save_files(store.to_raw)
+    end
+
+    def load_files(files)
+      files.each_with_object({}) do |file, hash|
+        hash[file] = YAML.load_file(file)
+      end
+    end
+
+    def save_files(raw_data)
+      raw_data.map do |file, data|
+        File.open(file, 'w', encoding: 'utf-8') { |f| f << data.to_yaml(line_width: -1) }
+      end
     end
   end
 end

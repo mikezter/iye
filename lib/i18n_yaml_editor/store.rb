@@ -1,115 +1,105 @@
-# encoding: utf-8
-
-require "set"
-require "pathname"
-
-require "i18n_yaml_editor/transformation"
-require "i18n_yaml_editor/category"
-require "i18n_yaml_editor/key"
-require "i18n_yaml_editor/translation"
-
 module I18nYamlEditor
   class DuplicateTranslationError < StandardError; end
 
   class Store
     include Transformation
+    extend Forwardable
 
-    attr_accessor :categories, :keys, :translations, :locales
+    attr_accessor :key_repository, :translation_repository, :locale_repository, :category_repository
+
+    def_delegator :category_repository, :all, :categories
+    def_delegator :key_repository, :all, :keys
+    def_delegator :locale_repository, :all, :locales
+    def_delegator :translation_repository, :all, :translations
+
+    def_delegator :key_repository, :filter_keys
+    def_delegator :key_repository, :unique_path_templates, :path_templates
+    def_delegator :translation_repository, :all_for_key, :translations_for_key
 
     def initialize
-      @categories = {}
-      @keys = {}
-      @translations = {}
-      @locales = Set.new
+      @category_repository = CategoryRepository.new(self)
+      @key_repository = KeyRepository.new(self)
+      @locale_repository = LocaleRepository.new(self)
+      @translation_repository = TranslationRepository.new(self)
     end
 
-    def add_translation translation
-      if existing = self.translations[translation.name]
-        message = "#{translation.name} detected in #{translation.file} and #{existing.file}"
-        raise DuplicateTranslationError.new(message)
+    def key_complete?(key)
+      translations = translation_repository.all_for_key(key)
+      first_text_present = translations.first.text_present?
+      translations.all?{ |k| k.text_present? == first_text_present }
+    end
+
+    def key_empty?(key)
+      translation_repository.all_for_key(key).all?(&:text_blank?)
+    end
+
+    def json_key?(key)
+      translation_repository.all_for_key(key).any?(&:not_stringish?)
+    end
+
+    ##
+    # Renames given key to new_id, migrates translations and persists it
+    def rename_key(key, new_id)
+      translations = translation_repository.all_for_key(key)
+      delete_key(key)
+
+      key.id = new_id
+      translations.each{ |t| t.key_id = new_id }
+
+      key_repository.create key
+      translations.each{ |t| translation_repository.create t }
+
+      key
+    end
+
+    def delete_key(key)
+      translations_for_key(key).each do |translation|
+        translation_repository.delete(translation)
       end
-
-      self.translations[translation.name] = translation
-
-      add_locale(translation.locale)
-
-      key = (self.keys[translation.key] ||= Key.new(name: translation.key))
-      key.add_translation(translation)
-
-      category = (self.categories[key.category] ||= Category.new(name: key.category))
-      category.add_key(key)
+      key_repository.delete(key)
     end
 
-    def add_key key
-      self.keys[key.name] = key
-    end
-
-    def add_locale locale
-      self.locales.add(locale)
-    end
-
-    def filter_keys options={}
-      filters = []
-      if options.has_key?(:key)
-        filters << lambda {|k| k.name =~ options[:key]} 
+    def from_raw(raw)
+      raw.each do |path, data|
+        flatten_hash(data).each do |full_key, text|
+          add_raw_translation(full_key, text, path)
+        end
       end
-      if options.has_key?(:complete)
-        filters << lambda {|k| k.complete? == options[:complete]}
+    end
+
+    def add_raw_translation(full_key, value = nil, path = nil)
+      translation = _convert_raw_translation(full_key, value, path)
+      translation_repository.create(translation)
+    end
+
+    def to_raw
+      locale_repository.all.each_with_object({}) do |locale, result|
+        keys_by_path = key_repository.all.group_by(&:path_template)
+        keys_by_path.each do |path, keys|
+          data = keys.each_with_object({}) do |key, data|
+            translation = translation_repository.find_by(locale_id: locale.id, key_id: key.id)
+            data[key.id] = translation.value if translation
+          end
+          result[template_to_locale_path(path, locale.id)] = { locale.id => nest_hash(data) } unless data.empty?
+        end
       end
-      if options.has_key?(:empty)
-        filters << lambda {|k| k.empty? == options[:empty]}
-      end
-      if options.has_key?(:text)
-        filters << lambda {|k|
-          k.translations.any? {|t| t.text =~ options[:text]}
-        }
-      end
-
-      self.keys.select {|name, key|
-        filters.all? {|filter| filter.call(key)}
-      }
     end
 
-    def create_missing_keys
-      self.keys.each {|name, key|
-        missing_locales = self.locales - key.translations.map(&:locale)
-        missing_locales.each {|locale|
-          translation = key.translations.first
+    private
 
-          # this just replaces the locale part of the file name. should
-          # be possible to do in a simpler way. gsub, baby.
-          path = Pathname.new(translation.file)
-          dirs, file = path.split
-          file = file.to_s.split(".")
-          file[-2] = locale
-          file = file.join(".")
-          path = dirs.join(file).to_s
+    def _convert_raw_translation(full_key, value = nil, path = nil)
+      raw_locale, raw_key = full_key.split('.', 2)
 
-          new_translation = Translation.new(name: "#{locale}.#{key.name}", file: path)
-          add_translation(new_translation)
-        }
-      }
+      locale = Locale.new(id: raw_locale)
+      path_template = path ? locale_path_to_template(path, raw_locale) : nil
+      key = Key.new(id: raw_key, path_template: path_template)
+      translation = Translation.new(key_id: key.id, locale_id: locale.id, value: value)
+
+      locale_repository.persist(locale) unless locale_repository.exists?(locale)
+      key_repository.persist(key) unless key_repository.exists?(key)
+
+      translation
     end
 
-    def from_yaml yaml, file=nil
-      translations = flatten_hash(yaml)
-      translations.each {|name, text|
-        translation = Translation.new(name: name, text: text, file: file)
-        add_translation(translation)
-      }
-    end
-
-    def to_yaml
-      result = {}
-      files = self.translations.values.group_by(&:file)
-      files.each {|file, translations|
-        file_result = {}
-        translations.each {|translation|
-          file_result[translation.name] = translation.text
-        }
-        result[file] = nest_hash(file_result)
-      }
-      result
-    end
   end
 end
