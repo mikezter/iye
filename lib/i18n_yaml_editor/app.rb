@@ -6,7 +6,7 @@ require 'i18n_yaml_editor/store'
 
 module I18nYamlEditor
   class App
-    attr_reader :base_path, :rel_path, :full_path
+    attr_reader :base_path, :rel_path, :full_path, :code_path
     attr_accessor :store
 
     def initialize(path, options = {})
@@ -14,8 +14,14 @@ module I18nYamlEditor
       @rel_path = path
       @full_path = File.expand_path(path, @base_path)
       @store = options.fetch(:store){ Store.new }
+      @code_path = options[:code] ? File.expand_path(options[:code]) : nil
 
       populate_store
+    end
+
+    def rewrite_code(old_key, new_key)
+      return unless @code_path
+      Rewriter::Runner.new(@code_path, old_key, new_key).go
     end
 
     def populate_store

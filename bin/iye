@@ -3,14 +3,21 @@
 # Check that source_folder was given and that it exists
 source_folder = ARGV[0]
 unless source_folder && Dir.exists?(source_folder)
-  puts 'Usage: iye source_folder'
+  puts 'Usage: iye translations_folder [code_folder]'
+  exit
+end
+
+code = ARGV[1]
+if code && !Dir.exists?(code)
+  puts "#{code} does not exist"
   exit
 end
 
 require 'i18n_yaml_editor'
 require 'rack'
 
-iye_app = I18nYamlEditor::App.new(source_folder)
+iye_app = I18nYamlEditor::App.new(source_folder, code: code)
 $stdout.puts " * Loading translations from #{iye_app.full_path}"
+$stdout.puts " * Will rewrite Ruby code at #{iye_app.code_path}" if code
 $stdout.puts " * Starting web editor at port 5050"
 Rack::Server.start :app => I18nYamlEditor.endpoint_for_app(iye_app), :Port => 5050

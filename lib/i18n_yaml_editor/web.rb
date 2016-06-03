@@ -163,12 +163,18 @@ module I18nYamlEditor
 
     # update key
     put '/keys' do
-      key = key_repository.find(request.params['key_id'])
       key_params = request.params.fetch('key')
 
+      old_key_id = request.params['key_id']
+      new_key_id = key_params['new_id']
 
-      store.rename_key(key, key_params['new_id']) if key_params['new_id']
+      return response.redirect(show_key_path(key)) unless new_key_id
+
+      key = key_repository.find(old_key_id)
+      store.rename_key(key, new_key_id)
       app.persist_store
+
+      app.rewrite_code(old_key_id, new_key_id)
 
       response.redirect(show_key_path(key))
     end
