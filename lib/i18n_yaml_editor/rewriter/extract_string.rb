@@ -1,9 +1,15 @@
-require 'yaml'
-
-CONFIG_FILE = 'config/locales/de.yml'.freeze
+require 'parser'
 
 # Rewrites strings in source code to calls to I18n.t
 class ExtractString < Parser::Rewriter
+  def language
+    raise NotImplementedError
+  end
+
+  def file
+    raise NotImplementedError
+  end
+
   def on_send(node)
     return if node.loc.selector.source == 'require'
     return if node.loc.selector.source == 'freeze'
@@ -55,17 +61,21 @@ class ExtractString < Parser::Rewriter
       child.children.last == :I18n
   end
 
+  # TODO: emit to local I18nYamlEditor::Store
   def emit(key)
-    yaml = YAML.load_file(CONFIG_FILE) if File.exist?(CONFIG_FILE)
-    yaml = { 'de' => {} } unless yaml
+    yaml = YAML.load_file(file)
+    yaml ||= {}
+    yaml[language] ||= {}
+
     value = key.to_s
 
     key = normalize_key(value)
 
-    puts "Dup: #{key}" if yaml['de'][key]
+    # TODO: handle duplicate keys somehow?
+    puts "Dup: #{key}" if yaml[language][key]
 
-    yaml['de'][key] = unescape(value)
-    File.write(CONFIG_FILE, YAML.dump(yaml))
+    yaml[language][key] = unescape(value)
+    File.write(file, YAML.dump(yaml))
   end
 
   def unescape(value)

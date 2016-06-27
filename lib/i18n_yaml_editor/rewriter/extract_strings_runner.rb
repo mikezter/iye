@@ -2,15 +2,15 @@ require 'find'
 require 'parser/runner/ruby_rewrite'
 
 module I18nYamlEditor::Rewriter
-  class Runner < Parser::Runner::RubyRewrite
-    def initialize(path, old_key, new_key)
+  class ExtractStringRunner < Parser::Runner::RubyRewrite
+    def initialize(path, language, file)
       super()
       @modify = true
       @files = files(path)
 
-      rewriter = Class.new(RenameKey) do
-        define_method(:from) { old_key }
-        define_method(:to) { new_key }
+      rewriter = Class.new(ExtractString) do
+        define_method(:language) { language }
+        define_method(:file) { file }
       end
 
       @rewriters = [rewriter]
