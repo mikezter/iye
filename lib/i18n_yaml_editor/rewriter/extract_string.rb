@@ -2,6 +2,7 @@ require 'yaml'
 
 CONFIG_FILE = 'config/locales/de.yml'.freeze
 
+# Rewrites strings in source code to calls to I18n.t
 class ExtractString < Parser::Rewriter
   def on_send(node)
     return if node.loc.selector.source == 'require'
@@ -18,6 +19,7 @@ class ExtractString < Parser::Rewriter
     key = remove_quotes(key_name(node))
     return if key.length < 2
     replace node.loc.expression, "I18n.t('#{normalize_key(key)}')"
+
     emit(key)
   end
 
@@ -27,35 +29,24 @@ class ExtractString < Parser::Rewriter
 
     key = symbols.join
 
-    if variable_hash.empty?
-      replace node.loc.expression, %{I18n.t('#{normalize_key(key)}')}
-    else
-      replace node.loc.expression, %{I18n.t('#{normalize_key(key)}', #{variable_hash})}
-    end
+    replacement = %{I18n.t('#{normalize_key(key)}')}
+    replacement += %{, #{variable_hash})} if variables.any?
+
+    replace node.loc.expression, replacement
 
     emit(key)
   end
 
   def on_array(node)
-    if string_array?(node)
-      change_to_square_brackets(node)
-      insert_commas(node)
-    end
-    node.children.each do |child|
-      case child.type
-      when :str
-        on_str(child)
-      when :dstr
-        on_dstr(child)
-      when :array
-        on_array(child)
-      when :hash
-        on_hash(child)
-      end
-    end
+    convert_string_array if string_array?(node)
+    node.children.each { |child| process_subchild(child) }
   end
 
   private
+
+  def process_subchild(child)
+    public_send "on_#{child.type}", child
+  end
 
   def i18n_t?(node)
     child = node.children.first
@@ -98,6 +89,11 @@ class ExtractString < Parser::Rewriter
 
   def string_array?(node)
     node.loc.begin && node.loc.begin.source.casecmp('%w(') == 0
+  end
+
+  def convert_string_array(node)
+    change_to_square_brackets(node)
+    insert_commas(node)
   end
 
   def extract_symbols(node)
