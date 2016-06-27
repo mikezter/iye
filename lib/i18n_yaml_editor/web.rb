@@ -174,7 +174,7 @@ module I18nYamlEditor
       store.rename_key(key, new_key_id)
       app.persist_store
 
-      app.rewrite_code(old_key_id, new_key_id)
+      app.rename_key(old_key_id, new_key_id)
 
       response.redirect(show_key_path(key))
     end
