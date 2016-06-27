@@ -19,9 +19,14 @@ module I18nYamlEditor
       populate_store
     end
 
+    def extract_strings(file, language)
+      return unless @code_path
+      Rewriter::ExtractStringRunner.new(@code_path, file, language).go
+    end
+
     def rename_key(old_key, new_key)
       return unless @code_path
-      Rewriter::Runner.new(@code_path, old_key, new_key).go
+      Rewriter::RenameKeyRunner.new(@code_path, old_key, new_key).go
     end
 
     def populate_store
