@@ -188,5 +188,13 @@ module I18nYamlEditor
 
       response.redirect(root_path)
     end
+
+    # Start String extraction
+    post '/extract_strings' do
+    end
+
+    # Ask destination file and language for String extraction
+    get '/extract_strings' do
+    end
   end
 end
