@@ -38,7 +38,7 @@ module I18nYamlEditor
     end
 
     def text_present?
-      !!text && text.length > 0
+      !!text && !text.empty?
     end
     def text_blank?
       !text_present?

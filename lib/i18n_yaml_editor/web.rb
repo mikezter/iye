@@ -111,10 +111,10 @@ module I18nYamlEditor
 
     # index
     get '/' do
-      if filter_params.size > 0
+      if !filter_params.empty?
         options = {}
-        options[:key] = /#{filter_params['key']}/ if String(filter_params['key']).length > 0
-        options[:text] = /#{filter_params['text']}/i if String(filter_params['text']).length > 0
+        options[:key] = /#{filter_params['key']}/ unless String(filter_params['key']).empty?
+        options[:text] = /#{filter_params['text']}/i unless String(filter_params['text']).empty?
         options[:complete] = false if filter_params['incomplete'] == 'on'
         options[:empty] = true if filter_params['empty'] == 'on'
 
