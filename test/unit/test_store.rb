@@ -163,7 +163,7 @@ class TestStore < Minitest::Test
           "app_name" => "Oversætter",
           "empty_string" => "",
           "nil_string" => nil,
-          "day_names" => [ 'søndag', 'mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag' ]
+          "day_names" => %w(søndag mandag tirsdag onsdag torsdag fredag lørdag)
         }
       }
     }
@@ -175,7 +175,7 @@ class TestStore < Minitest::Test
     store.add_raw_translation "da.app_name", "Oversætter", "/tmp/da.yml"
     store.add_raw_translation "da.empty_string", "", "/tmp/da.yml"
     store.add_raw_translation "da.nil_string", nil, "/tmp/da.yml"
-    store.add_raw_translation "da.day_names", [ 'søndag', 'mandag', 'tirsdag', 'onsdag', 'torsdag', 'fredag', 'lørdag' ], "/tmp/da.yml"
+    store.add_raw_translation "da.day_names", %w(søndag mandag tirsdag onsdag torsdag fredag lørdag), "/tmp/da.yml"
 
     assert_equal expected, store.to_raw
   end
