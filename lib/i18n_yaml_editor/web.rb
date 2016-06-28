@@ -3,8 +3,6 @@ require 'rack'
 require 'hobbit/render'
 require 'tilt/erb'
 
-require 'i18n_yaml_editor/app'
-
 module I18nYamlEditor
 
   ##
