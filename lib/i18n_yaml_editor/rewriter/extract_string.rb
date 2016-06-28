@@ -10,6 +10,10 @@ module I18nYamlEditor::Rewriter
       raise NotImplementedError
     end
 
+    def self.name
+      'ExtractString'
+    end
+
     def on_send(node)
       return if node.loc.selector.source == 'require'
       return if node.loc.selector.source == 'freeze'
@@ -51,6 +55,10 @@ module I18nYamlEditor::Rewriter
     private
 
     def process_subchild(child)
+      case child.type
+      when :int, :nil, :sym, :float
+        return
+      end
       public_send "on_#{child.type}", child
     end
 

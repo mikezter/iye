@@ -20,12 +20,21 @@ module I18nYamlEditor
 
     def extract_strings(file, language)
       return unless @code_path
+      file = File.join(full_path, File.basename(file))
+      file += '.yml' unless file.end_with?('.yml')
+      FileUtils.touch(file) unless File.exist?(file)
       Rewriter::ExtractStringRunner.new(@code_path, file, language).go
     end
 
     def rename_key(old_key, new_key)
       return unless @code_path
       Rewriter::RenameKeyRunner.new(@code_path, old_key, new_key).go
+    end
+
+    def reload_store
+      persist_store
+      @store = Store.new
+      populate_store
     end
 
     def populate_store

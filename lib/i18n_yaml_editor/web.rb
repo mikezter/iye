@@ -189,10 +189,14 @@ module I18nYamlEditor
 
     # Start String extraction
     post '/extract_strings' do
+      app.extract_strings(request.params['filename'], request.params['language'])
+      app.reload_store
+      response.redirect(root_path)
     end
 
     # Ask destination file and language for String extraction
     get '/extract_strings' do
+      render 'extract_strings.html'
     end
   end
 end

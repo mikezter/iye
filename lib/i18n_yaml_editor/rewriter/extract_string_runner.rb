@@ -3,7 +3,7 @@ require 'parser/runner/ruby_rewrite'
 
 module I18nYamlEditor::Rewriter
   class ExtractStringRunner < Parser::Runner::RubyRewrite
-    def initialize(path, language, file)
+    def initialize(path, file, language)
       super()
       @modify = true
       @files = files(path)
