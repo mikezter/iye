@@ -4,7 +4,7 @@
 #   ~/codevault.io/kaeuferportal/pdf_templates
 
 source_folder = '~/codevault.io/kaeuferportal/pdf_templates/config/locales'
-code = '~/codevault.io/kaeuferportal/pdf_templates/config/locales'
+code = '~/codevault.io/kaeuferportal/pdf_templates'
 
 require 'i18n_yaml_editor'
 require 'rack'
